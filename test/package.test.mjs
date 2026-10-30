@@ -29,7 +29,7 @@ test("manifest describes the claude engine", () => {
 test("package.json publishes dist and the manifest", () => {
   const pkg = readJson("package.json");
   assert.equal(pkg.name, "@theopenbee/engine-claude");
-  assert.equal(pkg.version, "0.1.0");
+  assert.equal(pkg.version, "0.1.1");
   assert.equal(pkg.type, "module");
   assert.equal(pkg.license, "MIT");
   assert.deepEqual(pkg.files, ["dist", "openbee.plugin.json"]);
