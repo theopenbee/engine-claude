@@ -5,7 +5,16 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { buildArgs, claudeBaseDirs, collectUsage, extractResultFromLog, mcpConfig, scanResultLog } from "../dist/claude.js";
+import {
+  buildArgs,
+  claudeBaseDirs,
+  collectUsage,
+  extractResultFromLog,
+  mcpConfig,
+  scanResultLog,
+  sessionBaseDirs,
+  sessionExists,
+} from "../dist/claude.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const logs = join(here, "fixtures", "logs");
@@ -183,6 +192,70 @@ test("claudeBaseDirs uses only CLAUDE_CONFIG_DIR when it is set", () => {
 
 test("claudeBaseDirs splits CLAUDE_CONFIG_DIR on commas and trims entries", () => {
   assert.deepEqual(claudeBaseDirs({ CLAUDE_CONFIG_DIR: " /a/one , ,/b/two,  " }, "/home/u"), ["/a/one", "/b/two"]);
+});
+
+test("sessionBaseDirs equals claudeBaseDirs when CLAUDE_CONFIG_DIR is unset", () => {
+  assert.deepEqual(sessionBaseDirs({}, "/home/u"), [join("/home/u", ".claude"), join("/home/u", ".config", "claude")]);
+});
+
+test("sessionBaseDirs equals claudeBaseDirs when CLAUDE_CONFIG_DIR has no comma", () => {
+  assert.deepEqual(sessionBaseDirs({ CLAUDE_CONFIG_DIR: "/data/claude" }, "/home/u"), ["/data/claude"]);
+});
+
+test("sessionBaseDirs also lists the unsplit CLAUDE_CONFIG_DIR value", () => {
+  assert.deepEqual(sessionBaseDirs({ CLAUDE_CONFIG_DIR: "/data/a,b/claude" }, "/home/u"), ["/data/a", "b/claude", "/data/a,b/claude"]);
+});
+
+test("sessionExists finds a flat session file", () => {
+  const base = freshDir("exists-flat");
+  writeFile(base, "projects/abc.jsonl", "{}\n");
+  assert.equal(sessionExists([base], "abc"), true);
+});
+
+test("sessionExists finds a session file one directory down", () => {
+  const base = freshDir("exists-nested");
+  writeFile(base, "projects/-Users-me-work/abc.jsonl", "{}\n");
+  assert.equal(sessionExists([base], "abc"), true);
+});
+
+test("sessionExists does not look deeper than one directory", () => {
+  const base = freshDir("exists-deep");
+  writeFile(base, "projects/p/q/abc.jsonl", "{}\n");
+  assert.equal(sessionExists([base], "abc"), false);
+});
+
+test("sessionExists is false when no base directory has the session", () => {
+  const base = freshDir("exists-none");
+  writeFile(base, "projects/p/other.jsonl", "{}\n");
+  assert.equal(sessionExists([join(scratch, "missing-base"), base], "abc"), false);
+});
+
+test("sessionExists searches every base directory", () => {
+  const first = freshDir("exists-first");
+  const second = freshDir("exists-second");
+  writeFile(second, "projects/p/abc.jsonl", "{}\n");
+  assert.equal(sessionExists([first, second], "abc"), true);
+});
+
+test("sessionExists does not match a file name that merely ends with the session id", () => {
+  const base = freshDir("exists-suffix");
+  writeFile(base, "projects/p/prefix-abc.jsonl", "{}\n");
+  assert.equal(sessionExists([base], "abc"), false);
+});
+
+test("sessionExists ignores a directory named like the session file", () => {
+  const base = freshDir("exists-dir");
+  mkdirSync(join(base, "projects", "abc.jsonl"), { recursive: true });
+  assert.equal(sessionExists([base], "abc"), false);
+});
+
+test("sessionExists ignores session ids that are not plain file names", () => {
+  const base = freshDir("exists-escape");
+  writeFile(base, "secret.jsonl", "{}\n");
+  writeFile(base, "projects/p/a.jsonl", "{}\n");
+  assert.equal(sessionExists([base], "../secret"), false);
+  assert.equal(sessionExists([base], ""), false);
+  assert.equal(sessionExists([base], "p/a"), false);
 });
 
 test("collectUsage aggregates by model", async () => {

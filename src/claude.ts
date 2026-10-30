@@ -114,6 +114,13 @@ export function claudeBaseDirs(env: NodeJS.ProcessEnv = process.env, home: strin
   return [join(home, ".claude"), join(home, ".config", "claude")];
 }
 
+export function sessionBaseDirs(env: NodeJS.ProcessEnv = process.env, home: string = homedir()): string[] {
+  const dirs = claudeBaseDirs(env, home);
+  const configured = env.CLAUDE_CONFIG_DIR;
+  if (configured && !dirs.includes(configured)) dirs.push(configured);
+  return dirs;
+}
+
 function isPlainFileName(id: unknown): id is string {
   return typeof id === "string" && id !== "" && !/[\\/\0]/.test(id);
 }
@@ -124,6 +131,23 @@ function isFile(path: string): boolean {
   } catch {
     return false;
   }
+}
+
+export function sessionExists(baseDirs: string[], sessionId: string): boolean {
+  if (!isPlainFileName(sessionId)) return false;
+  const name = `${sessionId}.jsonl`;
+  for (const base of baseDirs) {
+    const root = join(base, "projects");
+    if (isFile(join(root, name))) return true;
+    let entries: string[];
+    try {
+      entries = readdirSync(root);
+    } catch {
+      continue;
+    }
+    if (entries.some((entry) => isFile(join(root, entry, name)))) return true;
+  }
+  return false;
 }
 
 function indexJsonlFiles(dir: string, index: Map<string, string>): void {
@@ -227,12 +251,13 @@ export const engine: Engine = {
   async run(req: EngineRequest<RunParams>): Promise<RunResult> {
     const params = req.params;
     const command = findCli(req.config, "claude");
+    const resume = params.resume && sessionExists(sessionBaseDirs(), params.session_id);
 
     let outcome;
     try {
       outcome = await spawnCli({
         command,
-        args: buildArgs(params),
+        args: buildArgs({ ...params, resume }),
         cwd: params.work_dir,
         env: { DISABLE_AUTOUPDATER: "1" },
         input: params.prompt,

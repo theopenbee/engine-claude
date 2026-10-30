@@ -109,6 +109,11 @@ function freshDir(prefix) {
   return dir;
 }
 
+function mkdirpSync(dir) {
+  mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
 function baseRequest(method, params, overrides = {}) {
   return {
     protocol_version: 1,
@@ -228,12 +233,73 @@ for (const runtime of runtimes) {
     assert.equal(call.cwd, realpathSync(req.params.work_dir));
   });
 
-  t("run resumes an existing session", async () => {
+  t("run resumes a session whose file is flat under CLAUDE_CONFIG_DIR", async () => {
     const record = join(freshDir("rec"), "call.json");
+    const config = freshDir("config");
+    writeFileSync(join(mkdirpSync(join(config, "projects")), "resume-me.jsonl"), "{}\n");
     const req = baseRequest("run", runParams({ resume: true, session_id: "resume-me" }));
-    const res = response(await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record }));
+    const res = response(await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record, CLAUDE_CONFIG_DIR: config }));
     assert.deepEqual(res, { result: { text: "final answer" } });
     assert.deepEqual(recordedCall(record).argv, [...FIXED_ARGS, "--resume", "resume-me", "--print"]);
+  });
+
+  t("run resumes a session whose file is in a project directory", async () => {
+    const record = join(freshDir("rec"), "call.json");
+    const config = freshDir("config");
+    writeFileSync(join(mkdirpSync(join(config, "projects", "-Users-me-work")), "resume-me.jsonl"), "{}\n");
+    const req = baseRequest("run", runParams({ resume: true, session_id: "resume-me" }));
+    response(await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record, CLAUDE_CONFIG_DIR: config }));
+    assert.deepEqual(recordedCall(record).argv, [...FIXED_ARGS, "--resume", "resume-me", "--print"]);
+  });
+
+  t("run resumes a session found under ~/.claude or ~/.config/claude", async () => {
+    const home = freshDir("home");
+    writeFileSync(join(mkdirpSync(join(home, ".claude", "projects", "p")), "in-dot-claude.jsonl"), "{}\n");
+    writeFileSync(join(mkdirpSync(join(home, ".config", "claude", "projects")), "in-config.jsonl"), "{}\n");
+    const env = { HOME: home, USERPROFILE: home, CLAUDE_CONFIG_DIR: undefined };
+    for (const id of ["in-dot-claude", "in-config"]) {
+      const record = join(freshDir("rec"), "call.json");
+      const req = baseRequest("run", runParams({ resume: true, session_id: id }));
+      response(await runPlugin(runtime, req, { ...env, FAKE_CLAUDE_RECORD: record }));
+      assert.deepEqual(recordedCall(record).argv, [...FIXED_ARGS, "--resume", id, "--print"]);
+    }
+  });
+
+  t("run resumes a session under a CLAUDE_CONFIG_DIR that contains a comma", async () => {
+    const record = join(freshDir("rec"), "call.json");
+    const config = join(freshDir("config"), "team,claude");
+    writeFileSync(join(mkdirpSync(join(config, "projects", "p")), "resume-me.jsonl"), "{}\n");
+    const req = baseRequest("run", runParams({ resume: true, session_id: "resume-me" }));
+    response(await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record, CLAUDE_CONFIG_DIR: config }));
+    assert.deepEqual(recordedCall(record).argv, [...FIXED_ARGS, "--resume", "resume-me", "--print"]);
+  });
+
+  t("run starts a new session when the resumed one has no file", async () => {
+    const record = join(freshDir("rec"), "call.json");
+    const config = freshDir("config");
+    writeFileSync(join(mkdirpSync(join(config, "projects", "p")), "another-session.jsonl"), "{}\n");
+    const req = baseRequest("run", runParams({ resume: true, session_id: "never-created" }));
+    const res = response(await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record, CLAUDE_CONFIG_DIR: config }));
+    assert.deepEqual(res, { result: { text: "final answer" } });
+    assert.deepEqual(recordedCall(record).argv, [...FIXED_ARGS, "--session-id", "never-created", "--print"]);
+  });
+
+  t("run keeps extra args and the MCP config when it falls back to a new session", async () => {
+    const record = join(freshDir("rec"), "call.json");
+    const req = baseRequest(
+      "run",
+      runParams({
+        resume: true,
+        session_id: "never-created",
+        extra_args: ["--model", "opus"],
+        mcp: { name: "openbee", url: "http://127.0.0.1:9000/mcp", api_key_env: "OPENBEE_API_KEY" },
+      }),
+    );
+    response(await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record, CLAUDE_CONFIG_DIR: freshDir("empty-config") }));
+    const argv = recordedCall(record).argv;
+    assert.deepEqual(argv.slice(-5), ["--session-id", "never-created", "--model", "opus", "--print"]);
+    assert.ok(argv.some((arg) => arg.startsWith("--mcp-config=")));
+    assert.ok(!argv.includes("--resume"));
   });
 
   t("run omits the session flags when there is no session id", async () => {
