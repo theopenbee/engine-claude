@@ -1,0 +1,46 @@
+{
+  "name": "@theopenbee/engine-claude",
+  "version": "0.1.0",
+  "description": "Claude Code engine plugin for openbee",
+  "keywords": [
+    "openbee",
+    "openbee-plugin",
+    "openbee-engine",
+    "claude",
+    "claude-code"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/theopenbee/engine-claude.git"
+  },
+  "homepage": "https://github.com/theopenbee/engine-claude#readme",
+  "bugs": {
+    "url": "https://github.com/theopenbee/engine-claude/issues"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "files": [
+    "dist",
+    "openbee.plugin.json"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test test/*.test.mjs",
+    "prepare": "npm run build"
+  },
+  "dependencies": {
+    "@theopenbee/engine-sdk": "file:../engine-sdk"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}

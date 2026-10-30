@@ -1,0 +1,16 @@
+{
+  "protocol_version": 1,
+  "type": "engine",
+  "id": "claude",
+  "name": { "en": "Claude Code", "zh": "Claude Code" },
+  "description": { "en": "Runs tasks with Claude Code", "zh": "用 Claude Code 执行任务" },
+  "command": ["node", "dist/index.js"],
+  "config": [
+    {
+      "key": "path",
+      "type": "string",
+      "label": { "en": "Claude Code path", "zh": "Claude Code 路径" },
+      "help": { "en": "Leave empty to use claude on PATH", "zh": "留空则使用 PATH 里的 claude" }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+not json
+{"message":null}
+{"message":"text"}
+{"message":{"model":"claude-3-5-sonnet"}}
+{"message":{"model":"claude-3-5-sonnet","usage":null}}
+{"message":{"model":"","usage":{"input_tokens":5}}}
+{"message":{"usage":{"input_tokens":5}}}
+
+{"message":{"model":"claude-3-5-sonnet","usage":{"input_tokens":1,"output_tokens":2}}}

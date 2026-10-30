@@ -1,0 +1,4 @@
+{"type":"assistant","message":{"content":[{"type":"text","text":"before"}]}}
+{"type":"result","is_error":false,"result":"first result"}
+{"type":"assistant","message":{"content":[{"type":"text","text":"after"}]}}
+{"type":"result","is_error":true,"result":"second result"}

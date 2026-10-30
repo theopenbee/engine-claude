@@ -1,0 +1,4 @@
+{"type":"assistant","message":{"content":[{"type":"text","text":"kept"}]}}
+{"type":"result","is_error":"yes","result":"skipped: is_error is not a boolean"}
+{"type":"result","is_error":false,"result":42}
+{"type":"result","is_error":false,"result":"real result"}

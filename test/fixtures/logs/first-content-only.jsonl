@@ -1,0 +1,5 @@
+{"type":"assistant","message":{"content":[{"type":"text","text":"kept"}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Bash","input":{}},{"type":"text","text":"ignored"}]}}
+{"type":"assistant","message":{"content":[{"type":"text","text":""}]}}
+{"type":"assistant","message":{"content":[]}}
+{"type":"assistant"}

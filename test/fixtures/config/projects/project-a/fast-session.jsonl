@@ -1,0 +1,2 @@
+{"message":{"model":"claude-3-5-sonnet","speed":"fast","usage":{"input_tokens":100,"output_tokens":50}}}
+{"message":{"model":"claude-3-5-sonnet","speed":"standard","usage":{"input_tokens":1,"output_tokens":2}}}

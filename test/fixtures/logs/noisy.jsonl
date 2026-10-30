@@ -1,0 +1,6 @@
+Warning: something printed by the CLI
+{not json at all}
+
+   {"type":"assistant","message":{"content":[{"type":"text","text":"indented"}]}}   
+[1,2,3]
+{"type":"result","is_error":false,"result":"noisy answer"}
