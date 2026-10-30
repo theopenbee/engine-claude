@@ -37,7 +37,7 @@
     "prepare": "npm run build"
   },
   "dependencies": {
-    "@theopenbee/engine-sdk": "file:../engine-sdk"
+    "@theopenbee/engine-sdk": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
