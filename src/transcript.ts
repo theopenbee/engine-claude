@@ -61,7 +61,7 @@ function buildDiff(name: string, input: JsonObject): string | undefined {
   } else if (name === "Write") {
     lines = diffLines(input.content, "+");
   } else if (name === "NotebookEdit") {
-    lines = diffLines(input.new_source, "+");
+    if (input.edit_mode !== "delete") lines = diffLines(input.new_source, "+");
   }
   return lines.length > 0 ? lines.join("\n") : undefined;
 }

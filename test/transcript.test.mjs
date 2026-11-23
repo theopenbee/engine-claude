@@ -236,6 +236,9 @@ test("readTranscript builds a Write diff from the content", () => {
 test("readTranscript builds a NotebookEdit diff from the new source", () => {
   assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", new_source: "x = 1\ny = 2", edit_mode: "insert" }), "+x = 1\n+y = 2");
   assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", cell_id: "c1", edit_mode: "delete" }), undefined);
+  assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", cell_id: "c1", new_source: "x = 1", edit_mode: "delete" }), undefined);
+  assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", cell_id: "c1", new_source: "x = 1", edit_mode: "replace" }), "+x = 1");
+  assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", cell_id: "c1", new_source: "x = 1" }), "+x = 1");
   assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", new_source: "" }), undefined);
 });
 
@@ -245,13 +248,17 @@ test("readTranscript gives no diff to other tools", () => {
   assert.equal(diffOf("mcp__x__Edit", { old_string: "a", new_string: "b" }), undefined);
 });
 
-test("readTranscript clips a long diff like tool output", () => {
+test("readTranscript clips a long diff on line boundaries", () => {
   const content = Array.from({ length: 1000 }, (_, i) => `line ${i}`).join("\n");
   const diff = diffOf("Write", { file_path: "/a", content });
-  assert.equal(diff.length, 4000);
+  assert.ok(diff.length <= 4000);
   assert.ok(diff.startsWith("+line 0\n+line 1\n"));
-  assert.ok(diff.includes("\n…\n"));
-  assert.ok(diff.endsWith("+line 999"));
+  assert.ok(diff.endsWith("\n+line 999"));
+  const lines = diff.split("\n");
+  assert.equal(lines.filter((line) => line === "…").length, 1);
+  for (const line of lines) {
+    assert.ok(line === "…" || /^\+line \d+$/.test(line), line);
+  }
 });
 
 test("readTranscript skips nested lines and unrelated events", () => {
