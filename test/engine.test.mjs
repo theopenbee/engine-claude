@@ -532,6 +532,29 @@ for (const runtime of runtimes) {
     assert.ok(!existsSync(record));
   });
 
+  t("transcript turns the log into steps without starting claude", async () => {
+    const record = join(freshDir("rec"), "call.json");
+    const logPath = join(freshDir("logs"), "exec.log");
+    writeFileSync(logPath, `${OK_STDOUT}\n`);
+    const res = response(await runPlugin(runtime, baseRequest("transcript", { log_path: logPath }), { FAKE_CLAUDE_RECORD: record }));
+    assert.deepEqual(res, {
+      result: {
+        steps: [
+          { type: "text", text: "working on it" },
+          { type: "tool", kind: "command", name: "Bash", output: "ok", status: "done" },
+          { type: "text", text: "almost there" },
+        ],
+      },
+    });
+    assert.ok(!existsSync(record));
+  });
+
+  t("transcript of a missing log has no steps", async () => {
+    const logPath = join(freshDir("logs"), "missing.log");
+    const res = response(await runPlugin(runtime, baseRequest("transcript", { log_path: logPath })));
+    assert.deepEqual(res, { result: { steps: [] } });
+  });
+
   t("usage reads sessions from CLAUDE_CONFIG_DIR and omits missing ones", async () => {
     const req = baseRequest("usage", { session_ids: ["aggregate-session", "no-such-session", "deep-session"] });
     const res = response(await runPlugin(runtime, req, { CLAUDE_CONFIG_DIR: configFixture }));

@@ -36,7 +36,7 @@ test("package.json publishes dist and the manifest", () => {
   assert.deepEqual(pkg.files, ["dist", "icon.svg", "openbee.plugin.json"]);
   assert.equal(pkg.engines.node, ">=20");
   assert.equal(pkg.scripts.prepare, "npm run build");
-  assert.equal(pkg.dependencies["@theopenbee/engine-sdk"], "^0.3.0");
+  assert.equal(pkg.dependencies["@theopenbee/engine-sdk"], "^0.4.0");
   assert.deepEqual(pkg.publishConfig, { access: "public", registry: "https://registry.npmjs.org/" });
 });
 

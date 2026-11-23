@@ -4,7 +4,9 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 
 import { cliVersion, findCli, log, spawnCli } from "@theopenbee/engine-sdk";
-import type { Engine, EngineRequest, ModelInfo, RunParams, RunResult, TokenUsage } from "@theopenbee/engine-sdk";
+import type { Engine, EngineRequest, ModelInfo, RunParams, RunResult, TokenUsage, TranscriptParams, TranscriptStep } from "@theopenbee/engine-sdk";
+
+import { readTranscript } from "./transcript.js";
 
 const SYNTHETIC_MODEL = "<synthetic>";
 const MODEL_ALIASES = ["fable", "opus", "sonnet", "haiku"];
@@ -294,5 +296,9 @@ export const engine: Engine = {
 
   async models(): Promise<ModelInfo[]> {
     return MODEL_ALIASES.map((id) => ({ id }));
+  },
+
+  async transcript(req: EngineRequest<TranscriptParams>): Promise<TranscriptStep[]> {
+    return readTranscript(req.params.log_path);
   },
 };
