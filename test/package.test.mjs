@@ -15,6 +15,7 @@ test("manifest describes the claude engine", () => {
     name: { en: "Claude Code", zh: "Claude Code" },
     description: { en: "Runs tasks with Claude Code", zh: "用 Claude Code 执行任务" },
     command: ["node", "dist/index.js"],
+    icon: "icon.svg",
     config: [
       {
         key: "path",
@@ -32,11 +33,18 @@ test("package.json publishes dist and the manifest", () => {
   assert.equal(pkg.version, "0.2.0");
   assert.equal(pkg.type, "module");
   assert.equal(pkg.license, "MIT");
-  assert.deepEqual(pkg.files, ["dist", "openbee.plugin.json"]);
+  assert.deepEqual(pkg.files, ["dist", "icon.svg", "openbee.plugin.json"]);
   assert.equal(pkg.engines.node, ">=20");
   assert.equal(pkg.scripts.prepare, "npm run build");
   assert.equal(pkg.dependencies["@theopenbee/engine-sdk"], "^0.2.0");
   assert.deepEqual(pkg.publishConfig, { access: "public", registry: "https://registry.npmjs.org/" });
+});
+
+test("the icon is a one-colour SVG", () => {
+  const icon = readFileSync(join(root, "icon.svg"), "utf8");
+  assert.match(icon, /^<svg xmlns="http:\/\/www\.w3\.org\/2000\/svg"/);
+  assert.match(icon, /currentColor/);
+  assert.ok(icon.length <= 32 * 1024);
 });
 
 test("the build output exists", () => {

@@ -5,6 +5,7 @@
   "name": { "en": "Claude Code", "zh": "Claude Code" },
   "description": { "en": "Runs tasks with Claude Code", "zh": "用 Claude Code 执行任务" },
   "command": ["node", "dist/index.js"],
+  "icon": "icon.svg",
   "config": [
     {
       "key": "path",
