@@ -55,7 +55,35 @@ const FIXTURE_STEPS = [
     kind: "edit",
     name: "Edit",
     summary: "/work/demo/src/app.ts",
+    diff: "-42\n+43",
     output: "The file /work/demo/src/app.ts has been updated.",
+    status: "done",
+  },
+  {
+    type: "tool",
+    kind: "edit",
+    name: "MultiEdit",
+    summary: "/work/demo/src/util.ts",
+    diff: "-let a = 1;\n+const a = 1;\n-foo()\n-bar()\n+baz()",
+    output: "Applied 2 edits to /work/demo/src/util.ts",
+    status: "done",
+  },
+  {
+    type: "tool",
+    kind: "edit",
+    name: "Write",
+    summary: "/work/demo/NOTES.md",
+    diff: "+# Notes\n+\n+The answer is 43.",
+    output: "File created successfully at: /work/demo/NOTES.md",
+    status: "done",
+  },
+  {
+    type: "tool",
+    kind: "edit",
+    name: "NotebookEdit",
+    summary: "/work/demo/nb.ipynb",
+    diff: "+print(43)",
+    output: "Updated cell c1 with print(43)",
     status: "done",
   },
   {
@@ -158,6 +186,72 @@ test("readTranscript classifies tools and picks their summaries", () => {
     assert.equal(step.summary, summary, name);
     assert.equal(step.status, "running", name);
   });
+});
+
+function diffOf(name, input) {
+  const [step] = readTranscript(writeLog([toolUse("d", name, input)]));
+  return step.diff;
+}
+
+test("readTranscript builds an Edit diff with removed lines before added lines", () => {
+  assert.equal(diffOf("Edit", { file_path: "/a", old_string: "one\ntwo", new_string: "uno\ndos\ntres" }), "-one\n-two\n+uno\n+dos\n+tres");
+  assert.equal(diffOf("Edit", { file_path: "/a", old_string: "x", new_string: "y", replace_all: true }), "-x\n+y");
+});
+
+test("readTranscript skips the empty side of an Edit", () => {
+  assert.equal(diffOf("Edit", { file_path: "/a", old_string: "", new_string: "added" }), "+added");
+  assert.equal(diffOf("Edit", { file_path: "/a", old_string: "gone", new_string: "" }), "-gone");
+  assert.equal(diffOf("Edit", { file_path: "/a", old_string: "", new_string: "" }), undefined);
+  assert.equal(diffOf("Edit", { file_path: "/a" }), undefined);
+  assert.equal(diffOf("Edit", { file_path: "/a", old_string: 1, new_string: null }), undefined);
+});
+
+test("readTranscript drops one trailing newline and keeps inner blank lines", () => {
+  assert.equal(diffOf("Edit", { file_path: "/a", old_string: "a\n\nb\n", new_string: "c\r\nd\r\n" }), "-a\n-\n-b\n+c\n+d");
+  assert.equal(diffOf("Write", { file_path: "/a", content: "x\n\n" }), "+x\n+");
+});
+
+test("readTranscript builds a MultiEdit diff from every valid edit in order", () => {
+  const edits = [
+    { old_string: "a", new_string: "b" },
+    "junk",
+    null,
+    { old_string: 3 },
+    { old_string: "", new_string: "c" },
+    { old_string: "d", new_string: "" },
+  ];
+  assert.equal(diffOf("MultiEdit", { file_path: "/a", edits }), "-a\n+b\n+c\n-d");
+  assert.equal(diffOf("MultiEdit", { file_path: "/a", edits: [] }), undefined);
+  assert.equal(diffOf("MultiEdit", { file_path: "/a", edits: "nope" }), undefined);
+  assert.equal(diffOf("MultiEdit", { file_path: "/a" }), undefined);
+});
+
+test("readTranscript builds a Write diff from the content", () => {
+  assert.equal(diffOf("Write", { file_path: "/a", content: "one\ntwo" }), "+one\n+two");
+  assert.equal(diffOf("Write", { file_path: "/a", content: "" }), undefined);
+  assert.equal(diffOf("Write", { file_path: "/a", content: 5 }), undefined);
+  assert.equal(diffOf("Write", { file_path: "/a" }), undefined);
+});
+
+test("readTranscript builds a NotebookEdit diff from the new source", () => {
+  assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", new_source: "x = 1\ny = 2", edit_mode: "insert" }), "+x = 1\n+y = 2");
+  assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", cell_id: "c1", edit_mode: "delete" }), undefined);
+  assert.equal(diffOf("NotebookEdit", { notebook_path: "/a.ipynb", new_source: "" }), undefined);
+});
+
+test("readTranscript gives no diff to other tools", () => {
+  assert.equal(diffOf("Bash", { command: "ls", old_string: "a", new_string: "b", content: "c" }), undefined);
+  assert.equal(diffOf("Read", { file_path: "/a", content: "c" }), undefined);
+  assert.equal(diffOf("mcp__x__Edit", { old_string: "a", new_string: "b" }), undefined);
+});
+
+test("readTranscript clips a long diff like tool output", () => {
+  const content = Array.from({ length: 1000 }, (_, i) => `line ${i}`).join("\n");
+  const diff = diffOf("Write", { file_path: "/a", content });
+  assert.equal(diff.length, 4000);
+  assert.ok(diff.startsWith("+line 0\n+line 1\n"));
+  assert.ok(diff.includes("\n…\n"));
+  assert.ok(diff.endsWith("+line 999"));
 });
 
 test("readTranscript skips nested lines and unrelated events", () => {

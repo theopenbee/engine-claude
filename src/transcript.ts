@@ -37,9 +37,38 @@ function firstString(input: JsonObject): string | undefined {
   return undefined;
 }
 
-function describeTool(name: string, input: JsonObject): { kind: ToolKind; summary?: string } {
+function diffLines(text: unknown, marker: string): string[] {
+  if (typeof text !== "string" || text === "") return [];
+  const lines = text.split(/\r?\n/);
+  if (lines[lines.length - 1] === "") lines.pop();
+  return lines.map((line) => marker + line);
+}
+
+function replaceLines(oldText: unknown, newText: unknown): string[] {
+  return [...diffLines(oldText, "-"), ...diffLines(newText, "+")];
+}
+
+function buildDiff(name: string, input: JsonObject): string | undefined {
+  let lines: string[] = [];
+  if (name === "Edit") {
+    lines = replaceLines(input.old_string, input.new_string);
+  } else if (name === "MultiEdit") {
+    if (Array.isArray(input.edits)) {
+      for (const edit of input.edits) {
+        if (isObject(edit)) lines.push(...replaceLines(edit.old_string, edit.new_string));
+      }
+    }
+  } else if (name === "Write") {
+    lines = diffLines(input.content, "+");
+  } else if (name === "NotebookEdit") {
+    lines = diffLines(input.new_source, "+");
+  }
+  return lines.length > 0 ? lines.join("\n") : undefined;
+}
+
+function describeTool(name: string, input: JsonObject): { kind: ToolKind; summary?: string; diff?: string } {
   const rule = KIND_RULES.get(name);
-  if (rule) return { kind: rule[0], summary: stringField(input, rule[1]) };
+  if (rule) return { kind: rule[0], summary: stringField(input, rule[1]), diff: buildDiff(name, input) };
   if (name.endsWith("send_message")) return { kind: "message", summary: stringField(input, ["content"]) };
   return { kind: "other", summary: firstString(input) };
 }
@@ -72,8 +101,8 @@ function addAssistant(builder: TranscriptBuilder, event: JsonObject): void {
     } else if (block.type === "thinking" && typeof block.thinking === "string") {
       builder.thinking(block.thinking);
     } else if (block.type === "tool_use" && typeof block.id === "string" && typeof block.name === "string") {
-      const { kind, summary } = describeTool(block.name, isObject(block.input) ? block.input : {});
-      builder.toolStart(block.id, { kind, name: stripMcpPrefix(block.name), summary }, at);
+      const { kind, summary, diff } = describeTool(block.name, isObject(block.input) ? block.input : {});
+      builder.toolStart(block.id, { kind, name: stripMcpPrefix(block.name), summary, diff }, at);
     }
   }
 }
