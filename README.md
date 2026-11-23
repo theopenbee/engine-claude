@@ -46,6 +46,10 @@ Then enable the plugin, and pick `claude` as the default engine or per worker.
 
 The plugin checks the setting when it is enabled: it runs `claude --version` and shows the version, or the reason it failed (for example `claude not found on PATH`).
 
+## Model
+
+The worker's **Model** field is passed to Claude Code as `--model <model>`, before the extra args. Claude Code has no command that lists models, so the plugin suggests the aliases `fable`, `opus`, `sonnet` and `haiku`; any other model name Claude Code accepts works too. If the engine args already set a model with `--model`, they win and the Model field is ignored. Without a model, Claude Code uses its own default.
+
 ## Sessions
 
 Sessions stay in Claude Code's own config directory, `~/.claude/projects/` (or `~/.config/claude/projects/`). The plugin does not copy or move them, so conversations that were started before the plugin was installed resume as before, and they survive uninstalling the plugin.
@@ -55,7 +59,7 @@ Token usage is read from the same session files and summed per model. If `CLAUDE
 ## How it runs Claude Code
 
 ```
-claude --dangerously-skip-permissions --verbose --output-format stream-json [--mcp-config=<json>] [--session-id <id> | --resume <id>] [extra args] --print
+claude --dangerously-skip-permissions --verbose --output-format stream-json [--mcp-config=<json>] [--session-id <id> | --resume <id>] [--model <model>] [extra args] --print
 ```
 
 - The prompt is written to Claude Code's standard input.

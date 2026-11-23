@@ -4,9 +4,10 @@ import { join } from "node:path";
 import { createInterface } from "node:readline";
 
 import { cliVersion, findCli, log, spawnCli } from "@theopenbee/engine-sdk";
-import type { Engine, EngineRequest, RunParams, RunResult, TokenUsage } from "@theopenbee/engine-sdk";
+import type { Engine, EngineRequest, ModelInfo, RunParams, RunResult, TokenUsage } from "@theopenbee/engine-sdk";
 
 const SYNTHETIC_MODEL = "<synthetic>";
+const MODEL_ALIASES = ["fable", "opus", "sonnet", "haiku"];
 const EMPTY_ERROR_TEXT = "bee execution failed (no details available)";
 
 type JsonObject = Record<string, unknown>;
@@ -44,13 +45,23 @@ export function mcpConfig(mcp: McpParams): string {
   });
 }
 
-export function buildArgs(params: Pick<RunParams, "session_id" | "resume" | "extra_args" | "mcp">): string[] {
+function modelArgs(model: string | undefined, extraArgs: string[]): string[] {
+  if (typeof model !== "string" || model === "") return [];
+  if (extraArgs.some((arg) => arg === "--model" || arg.startsWith("--model="))) {
+    log.warn(`engine args already set a model, ignoring model ${JSON.stringify(model)}`);
+    return [];
+  }
+  return ["--model", model];
+}
+
+export function buildArgs(params: Pick<RunParams, "session_id" | "resume" | "extra_args" | "model" | "mcp">): string[] {
   const args = ["--dangerously-skip-permissions", "--verbose", "--output-format", "stream-json"];
   if (params.mcp?.url) args.push(`--mcp-config=${mcpConfig(params.mcp)}`);
   if (params.session_id) {
     args.push(params.resume ? "--resume" : "--session-id", params.session_id);
   }
-  args.push(...(params.extra_args ?? []), "--print");
+  const extraArgs = params.extra_args ?? [];
+  args.push(...modelArgs(params.model, extraArgs), ...extraArgs, "--print");
   return args;
 }
 
@@ -279,5 +290,9 @@ export const engine: Engine = {
 
   async usage(req) {
     return collectUsage(claudeBaseDirs(), req.params.session_ids ?? []);
+  },
+
+  async models(): Promise<ModelInfo[]> {
+    return MODEL_ALIASES.map((id) => ({ id }));
   },
 };

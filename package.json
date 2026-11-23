@@ -1,6 +1,6 @@
 {
   "name": "@theopenbee/engine-claude",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Claude Code engine plugin for openbee",
   "keywords": [
     "openbee",
@@ -37,7 +37,7 @@
     "prepare": "npm run build"
   },
   "dependencies": {
-    "@theopenbee/engine-sdk": "^0.1.0"
+    "@theopenbee/engine-sdk": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

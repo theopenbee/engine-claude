@@ -233,6 +233,53 @@ for (const runtime of runtimes) {
     assert.equal(call.cwd, realpathSync(req.params.work_dir));
   });
 
+  t("run puts the model before the extra args of a new session", async () => {
+    const record = join(freshDir("rec"), "call.json");
+    const req = baseRequest("run", runParams({ model: "opus", extra_args: ["--fallback-model", "haiku"] }));
+    const raw = await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record });
+    response(raw);
+    assert.deepEqual(recordedCall(record).argv, [
+      ...FIXED_ARGS,
+      "--session-id",
+      req.params.session_id,
+      "--model",
+      "opus",
+      "--fallback-model",
+      "haiku",
+      "--print",
+    ]);
+    assert.doesNotMatch(raw.stderr, /already set a model/);
+  });
+
+  t("run puts the model before the extra args of a resumed session", async () => {
+    const record = join(freshDir("rec"), "call.json");
+    const config = freshDir("config");
+    writeFileSync(join(mkdirpSync(join(config, "projects", "p")), "resume-me.jsonl"), "{}\n");
+    const req = baseRequest("run", runParams({ resume: true, session_id: "resume-me", model: "sonnet", extra_args: ["--effort", "high"] }));
+    response(await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record, CLAUDE_CONFIG_DIR: config }));
+    assert.deepEqual(recordedCall(record).argv, [...FIXED_ARGS, "--resume", "resume-me", "--model", "sonnet", "--effort", "high", "--print"]);
+  });
+
+  t("run lets extra args that already set a model win and warns", async () => {
+    for (const extra of [["--model", "haiku"], ["--model=haiku"]]) {
+      const record = join(freshDir("rec"), "call.json");
+      const req = baseRequest("run", runParams({ model: "opus", extra_args: extra }));
+      const raw = await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record });
+      response(raw);
+      assert.deepEqual(recordedCall(record).argv, [...FIXED_ARGS, "--session-id", req.params.session_id, ...extra, "--print"]);
+      assert.match(raw.stderr, /\[warn\] engine args already set a model, ignoring model "opus"/);
+    }
+  });
+
+  t("run passes no model flag when the model is empty or absent", async () => {
+    for (const overrides of [{ model: "" }, {}]) {
+      const record = join(freshDir("rec"), "call.json");
+      const req = baseRequest("run", runParams(overrides));
+      response(await runPlugin(runtime, req, { FAKE_CLAUDE_RECORD: record }));
+      assert.deepEqual(recordedCall(record).argv, [...FIXED_ARGS, "--session-id", req.params.session_id, "--print"]);
+    }
+  });
+
   t("run resumes a session whose file is flat under CLAUDE_CONFIG_DIR", async () => {
     const record = join(freshDir("rec"), "call.json");
     const config = freshDir("config");
@@ -477,6 +524,13 @@ for (const runtime of runtimes) {
     },
     { skip: process.platform === "win32" },
   );
+
+  t("models lists the Claude Code aliases without starting claude", async () => {
+    const record = join(freshDir("rec"), "call.json");
+    const res = response(await runPlugin(runtime, baseRequest("models", {}), { FAKE_CLAUDE_RECORD: record }));
+    assert.deepEqual(res, { result: { models: [{ id: "fable" }, { id: "opus" }, { id: "sonnet" }, { id: "haiku" }] } });
+    assert.ok(!existsSync(record));
+  });
 
   t("usage reads sessions from CLAUDE_CONFIG_DIR and omits missing ones", async () => {
     const req = baseRequest("usage", { session_ids: ["aggregate-session", "no-such-session", "deep-session"] });

@@ -29,13 +29,13 @@ test("manifest describes the claude engine", () => {
 test("package.json publishes dist and the manifest", () => {
   const pkg = readJson("package.json");
   assert.equal(pkg.name, "@theopenbee/engine-claude");
-  assert.equal(pkg.version, "0.1.1");
+  assert.equal(pkg.version, "0.2.0");
   assert.equal(pkg.type, "module");
   assert.equal(pkg.license, "MIT");
   assert.deepEqual(pkg.files, ["dist", "openbee.plugin.json"]);
   assert.equal(pkg.engines.node, ">=20");
   assert.equal(pkg.scripts.prepare, "npm run build");
-  assert.equal(pkg.dependencies["@theopenbee/engine-sdk"], "^0.1.0");
+  assert.equal(pkg.dependencies["@theopenbee/engine-sdk"], "^0.2.0");
   assert.deepEqual(pkg.publishConfig, { access: "public", registry: "https://registry.npmjs.org/" });
 });
 

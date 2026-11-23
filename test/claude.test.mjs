@@ -65,6 +65,46 @@ test("buildArgs tolerates missing extra args", () => {
   assert.deepEqual(buildArgs({ session_id: "s4", resume: false }), [...FIXED_ARGS, "--session-id", "s4", "--print"]);
 });
 
+test("buildArgs puts the model after the session flags and before the extra args", () => {
+  assert.deepEqual(buildArgs({ session_id: "s6", resume: false, extra_args: ["--fallback-model", "haiku"], model: "opus" }), [
+    ...FIXED_ARGS,
+    "--session-id",
+    "s6",
+    "--model",
+    "opus",
+    "--fallback-model",
+    "haiku",
+    "--print",
+  ]);
+});
+
+test("buildArgs passes the model when resuming", () => {
+  assert.deepEqual(buildArgs({ session_id: "s7", resume: true, extra_args: [], model: "sonnet" }), [
+    ...FIXED_ARGS,
+    "--resume",
+    "s7",
+    "--model",
+    "sonnet",
+    "--print",
+  ]);
+});
+
+test("buildArgs leaves the model to extra args that already set one", () => {
+  for (const extra of [["--model", "haiku"], ["--model=haiku"]]) {
+    assert.deepEqual(buildArgs({ session_id: "s8", resume: false, extra_args: extra, model: "opus" }), [
+      ...FIXED_ARGS,
+      "--session-id",
+      "s8",
+      ...extra,
+      "--print",
+    ]);
+  }
+});
+
+test("buildArgs skips an empty model", () => {
+  assert.deepEqual(buildArgs({ session_id: "", resume: false, extra_args: [], model: "" }), [...FIXED_ARGS, "--print"]);
+});
+
 test("buildArgs adds the MCP config before the session flags", () => {
   const mcp = { name: "openbee", url: "http://127.0.0.1:9000/mcp", api_key_env: "OPENBEE_API_KEY" };
   const args = buildArgs({ session_id: "s5", resume: true, extra_args: ["--model", "x"], mcp });
