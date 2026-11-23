@@ -3,28 +3,31 @@ import type { ToolKind, TranscriptStep } from "@theopenbee/engine-sdk";
 
 type JsonObject = Record<string, unknown>;
 
-const KIND_RULES = new Map<string, [ToolKind, string]>([
-  ["Bash", ["command", "command"]],
-  ["BashOutput", ["command", "command"]],
-  ["Read", ["read", "file_path"]],
-  ["NotebookRead", ["read", "file_path"]],
-  ["Write", ["edit", "file_path"]],
-  ["Edit", ["edit", "file_path"]],
-  ["MultiEdit", ["edit", "file_path"]],
-  ["NotebookEdit", ["edit", "file_path"]],
-  ["Grep", ["search", "pattern"]],
-  ["Glob", ["search", "pattern"]],
-  ["WebFetch", ["web", "url"]],
-  ["WebSearch", ["web", "query"]],
+const KIND_RULES = new Map<string, [ToolKind, string[]]>([
+  ["Bash", ["command", ["command"]]],
+  ["BashOutput", ["command", ["command"]]],
+  ["Read", ["read", ["file_path"]]],
+  ["NotebookRead", ["read", ["notebook_path", "file_path"]]],
+  ["Write", ["edit", ["file_path"]]],
+  ["Edit", ["edit", ["file_path"]]],
+  ["MultiEdit", ["edit", ["file_path"]]],
+  ["NotebookEdit", ["edit", ["notebook_path", "file_path"]]],
+  ["Grep", ["search", ["pattern"]]],
+  ["Glob", ["search", ["pattern"]]],
+  ["WebFetch", ["web", ["url"]]],
+  ["WebSearch", ["web", ["query"]]],
 ]);
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function stringField(input: JsonObject, key: string): string | undefined {
-  const value = input[key];
-  return typeof value === "string" ? value : undefined;
+function stringField(input: JsonObject, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = input[key];
+    if (typeof value === "string") return value;
+  }
+  return undefined;
 }
 
 function firstString(input: JsonObject): string | undefined {
@@ -37,7 +40,7 @@ function firstString(input: JsonObject): string | undefined {
 function describeTool(name: string, input: JsonObject): { kind: ToolKind; summary?: string } {
   const rule = KIND_RULES.get(name);
   if (rule) return { kind: rule[0], summary: stringField(input, rule[1]) };
-  if (name.endsWith("send_message")) return { kind: "message", summary: stringField(input, "content") };
+  if (name.endsWith("send_message")) return { kind: "message", summary: stringField(input, ["content"]) };
   return { kind: "other", summary: firstString(input) };
 }
 
